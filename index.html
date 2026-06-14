@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1a1f2e">
+<title>StudyTrack</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg:        #0f1319;
+    --surface:   #1a2030;
+    --surface2:  #222a3e;
+    --border:    #2d3a55;
+    --text:      #e8ecf4;
+    --muted:     #6b7a99;
+    --accent:    #5b8dee;
+    --accent2:   #7ec8a4;
+    --warn:      #e8a45b;
+    --danger:    #e87070;
+    --done:      #3d8c6a;
+    --spi:       #5b8dee;
+    --fw:        #b07edc;
+    --toeic:     #5bc8c4;
+    --tk:        #e8a45b;
+    --r: 14px;
+    --r-sm: 8px;
+    --shadow: 0 2px 16px rgba(0,0,0,0.45);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    min-height: 100vh;
+    overscroll-behavior: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* ---- Layout ---- */
+  .app { display: flex; flex-direction: column; min-height: 100vh; max-width: 430px; margin: 0 auto; }
+
+  .header {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(15,19,25,0.92);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    padding: 16px 20px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .header-top { display: flex; justify-content: space-between; align-items: center; }
+  .logo { font-family: 'DM Mono', monospace; font-size: 13px; letter-spacing: 0.12em; color: var(--accent); text-transform: uppercase; }
+  .date-str { font-size: 12px; color: var(--muted); }
+  .phase-badge {
+    margin-top: 8px;
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 20px; padding: 4px 12px;
+    font-size: 12px; color: var(--muted);
+  }
+  .phase-badge span { color: var(--accent); font-weight: 500; }
+
+  .main { flex: 1; padding: 0 0 96px; }
+
+  /* ---- Nav ---- */
+  .nav {
+    position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+    width: 100%; max-width: 430px;
+    background: rgba(26,32,48,0.96);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-top: 1px solid var(--border);
+    display: flex; z-index: 100;
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+  .nav-btn {
+    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;
+    padding: 10px 4px 8px; border: none; background: transparent;
+    color: var(--muted); font-size: 10px; cursor: pointer;
+    font-family: 'Noto Sans JP', sans-serif;
+    transition: color 0.15s;
+    min-height: 56px;
+  }
+  .nav-btn svg { width: 22px; height: 22px; }
+  .nav-btn.active { color: var(--accent); }
+
+  /* ---- Sections ---- */
+  .section { display: none; padding: 20px 16px; }
+  .section.active { display: block; }
+  .section-title { font-size: 11px; font-weight: 500; letter-spacing: 0.1em; color: var(--muted); text-transform: uppercase; margin-bottom: 14px; }
+
+  /* ---- Today view ---- */
+  .today-header { margin-bottom: 20px; }
+  .today-title { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
+  .today-sub { font-size: 13px; color: var(--muted); margin-top: 2px; }
+
+  .task-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 16px;
+    margin-bottom: 12px;
+    position: relative;
+    overflow: hidden;
+    transition: opacity 0.2s;
+  }
+  .task-card.completed { opacity: 0.5; }
+  .task-card::before {
+    content: '';
+    position: absolute; left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: var(--card-color, var(--accent));
+  }
+  .task-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+  .task-name { font-weight: 700; font-size: 16px; margin-bottom: 2px; }
+  .task-time {
+    font-family: 'DM Mono', monospace; font-size: 11px;
+    color: var(--muted); white-space: nowrap; margin-top: 3px;
+  }
+  .task-memo { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .task-streak {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 11px; color: var(--warn); margin-top: 8px;
+  }
+  .check-btn {
+    width: 44px; height: 44px; flex-shrink: 0;
+    border-radius: 50%; border: 2px solid var(--border);
+    background: transparent; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s, border-color 0.15s;
+    color: transparent;
+  }
+  .check-btn.done { background: var(--done); border-color: var(--done); color: white; }
+  .check-btn svg { width: 20px; height: 20px; }
+
+  .all-done-msg {
+    text-align: center; padding: 36px 20px;
+    color: var(--muted); font-size: 14px;
+    display: none;
+  }
+  .all-done-msg.show { display: block; }
+  .all-done-emoji { font-size: 40px; margin-bottom: 10px; }
+
+  /* ---- Progress section ---- */
+  .progress-task {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  .prog-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .prog-name { font-weight: 700; font-size: 15px; }
+  .prog-streak { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--warn); }
+  .prog-streak span { font-size: 20px; font-weight: 700; }
+  .calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 3px;
+  }
+  .cal-day {
+    aspect-ratio: 1;
+    border-radius: 4px;
+    background: var(--surface2);
+    position: relative;
+    cursor: default;
+  }
+  .cal-day.done-day { background: var(--card-color, var(--accent)); opacity: 0.85; }
+  .cal-day.today-mark { box-shadow: 0 0 0 2px white; }
+  .cal-day.future { opacity: 0.25; }
+  .cal-week-labels {
+    display: grid; grid-template-columns: repeat(7, 1fr);
+    gap: 3px; margin-bottom: 4px;
+  }
+  .cal-week-labels span {
+    text-align: center; font-size: 9px; color: var(--muted);
+    font-family: 'DM Mono', monospace;
+  }
+  .prog-stats { display: flex; gap: 16px; margin-top: 12px; }
+  .prog-stat { flex: 1; text-align: center; }
+  .prog-stat-val { font-family: 'DM Mono', monospace; font-size: 20px; font-weight: 500; color: var(--accent); }
+  .prog-stat-lbl { font-size: 10px; color: var(--muted); }
+
+  /* ---- Dashboard ---- */
+  .dash-phase-bar {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  .dash-timeline { position: relative; margin-top: 8px; }
+  .timeline-track {
+    height: 6px; background: var(--surface2);
+    border-radius: 3px; position: relative; overflow: hidden;
+  }
+  .timeline-fill {
+    height: 100%; border-radius: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    transition: width 0.4s ease;
+  }
+  .timeline-phases {
+    display: flex; justify-content: space-between;
+    margin-top: 8px;
+  }
+  .tl-phase {
+    font-size: 10px; color: var(--muted); text-align: center;
+    flex: 1; cursor: default;
+  }
+  .tl-phase.current { color: var(--accent); font-weight: 700; }
+  .tl-phase-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--border); margin: 0 auto 4px;
+  }
+  .tl-phase.current .tl-phase-dot { background: var(--accent); }
+  .tl-phase.done-phase .tl-phase-dot { background: var(--accent2); }
+
+  .deadline-cards { display: flex; flex-direction: column; gap: 10px; }
+  .dl-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 14px 16px;
+    display: flex; align-items: center; gap: 14px;
+  }
+  .dl-days {
+    font-family: 'DM Mono', monospace;
+    font-size: 28px; font-weight: 500;
+    line-height: 1; color: var(--card-color, var(--accent));
+    min-width: 52px; text-align: center;
+  }
+  .dl-days small { display: block; font-size: 10px; color: var(--muted); margin-top: 2px; font-weight: 400; }
+  .dl-info { flex: 1; }
+  .dl-name { font-weight: 700; font-size: 14px; }
+  .dl-date { font-size: 11px; color: var(--muted); margin-top: 1px; }
+  .dl-bar-wrap { height: 3px; background: var(--surface2); border-radius: 2px; margin-top: 6px; overflow: hidden; }
+  .dl-bar { height: 100%; border-radius: 2px; background: var(--card-color, var(--accent)); }
+
+  /* urgency pulse */
+  @keyframes pulse-ring {
+    0% { box-shadow: 0 0 0 0 rgba(232,112,112,0.4); }
+    70% { box-shadow: 0 0 0 6px rgba(232,112,112,0); }
+    100% { box-shadow: 0 0 0 0 rgba(232,112,112,0); }
+  }
+  .dl-card.urgent .dl-days { animation: pulse-ring 1.8s infinite; border-radius: 8px; }
+
+  .phase-detail {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  .phase-row { display: flex; justify-content: space-between; align-items: baseline; padding: 8px 0; border-bottom: 1px solid var(--border); }
+  .phase-row:last-child { border-bottom: none; }
+  .phase-row-name { font-size: 13px; }
+  .phase-row-time { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--muted); }
+
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; vertical-align: middle; margin-right: 6px; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-top">
+      <div class="logo">StudyTrack</div>
+      <div class="date-str" id="headerDate"></div>
+    </div>
+    <div class="phase-badge" id="phaseBadge">
+      現在: <span id="phaseLabel">Phase 1</span>
+    </div>
+  </header>
+
+  <main class="main">
+
+    <!-- TODAY -->
+    <div class="section active" id="sec-today">
+      <div class="today-header">
+        <div class="today-title">今日のタスク</div>
+        <div class="today-sub" id="todaySub"></div>
+      </div>
+      <div id="todayCards"></div>
+      <div class="all-done-msg" id="allDoneMsg">
+        <div class="all-done-emoji">🎉</div>
+        今日のタスク、全部完了！<br>よく頑張りました。
+      </div>
+    </div>
+
+    <!-- PROGRESS -->
+    <div class="section" id="sec-progress">
+      <div class="section-title">継続記録（過去30日）</div>
+      <div id="progressCards"></div>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div class="section" id="sec-dash">
+      <div class="section-title">全体タイムライン</div>
+
+      <div class="dash-phase-bar">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">Phase 進捗</div>
+        <div class="timeline-track">
+          <div class="timeline-fill" id="timelineFill"></div>
+        </div>
+        <div class="timeline-phases" id="timelinePhases"></div>
+      </div>
+
+      <div class="section-title" style="margin-top:8px;">締切まで</div>
+      <div class="deadline-cards" id="deadlineCards"></div>
+
+      <div class="section-title" style="margin-top:20px;">今のフェーズ詳細</div>
+      <div class="phase-detail" id="phaseDetail"></div>
+    </div>
+
+  </main>
+
+  <!-- Bottom Nav -->
+  <nav class="nav">
+    <button class="nav-btn active" onclick="switchTab('today',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M3 9h6M3 15h6"/></svg>
+      今日
+    </button>
+    <button class="nav-btn" onclick="switchTab('progress',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      記録
+    </button>
+    <button class="nav-btn" onclick="switchTab('dash',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      全体
+    </button>
+  </nav>
+
+</div>
+
+<script>
+// ============================================================
+// CONFIG
+// ============================================================
+const TASKS = [
+  {
+    id: 'spi',
+    name: 'SPI勉強',
+    color: '#5b8dee',
+    deadline: '2026-07-07',
+    deadlineLabel: '2026/7/7',
+    phases: {
+      1: { time: '1.5h', memo: '毎日コツコツ、基礎を固める' },
+      2: { time: '週2h', memo: '週2回ペースで維持' },
+      3: null,
+      4: null,
+    }
+  },
+  {
+    id: 'fw',
+    name: 'フィールドワークまとめ',
+    color: '#b07edc',
+    deadline: '2026-07-31',
+    deadlineLabel: '2026/7月中（面談前）',
+    phases: {
+      1: { time: '45分', memo: '毎日少しずつ積み上げる' },
+      2: { time: '1〜1.5h', memo: '仕上げフェーズ・完成に向けて' },
+      3: null,
+      4: null,
+    }
+  },
+  {
+    id: 'toeic',
+    name: 'TOEIC勉強',
+    color: '#5bc8c4',
+    deadline: '2026-08-23',
+    deadlineLabel: '2026/8/23（試験）',
+    phases: {
+      1: null,
+      2: { time: '1h', memo: 'リスニング・文法の基礎から' },
+      3: { time: '1.5〜2h', memo: '本番直前、集中モード' },
+      4: null,
+    }
+  },
+  {
+    id: 'tk',
+    name: 'トルコ語（ユヌス・エムレ）',
+    color: '#e8a45b',
+    deadline: '2026-09-13',
+    deadlineLabel: '2026/9/13（試験）',
+    phases: {
+      1: null,
+      2: null,
+      3: { time: '30〜45分', memo: '語彙・文法の導入' },
+      4: { time: '1.5h', memo: '試験直前、集中強化' },
+    }
+  },
+];
+
+const PHASES = [
+  { num: 1, label: 'Ph.1', start: '2026-06-14', end: '2026-07-07', title: 'SPI集中期' },
+  { num: 2, label: 'Ph.2', start: '2026-07-08', end: '2026-07-31', title: 'FW仕上げ期' },
+  { num: 3, label: 'Ph.3', start: '2026-08-01', end: '2026-08-23', title: 'TOEIC集中期' },
+  { num: 4, label: 'Ph.4', start: '2026-08-24', end: '2026-09-13', title: 'トルコ語集中期' },
+];
+
+// ============================================================
+// STATE
+// ============================================================
+const STATE_KEY = 'studytrack_v3';
+
+function loadState() {
+  try { return JSON.parse(localStorage.getItem(STATE_KEY)) || {}; }
+  catch(e) { return {}; }
+}
+function saveState(s) {
+  localStorage.setItem(STATE_KEY, JSON.stringify(s));
+}
+
+let state = loadState(); // { 'YYYY-MM-DD': { spi: true, fw: false, ... }, ... }
+
+function todayKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function dateKey(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function parseDate(str) {
+  const [y,m,d] = str.split('-').map(Number);
+  return new Date(y, m-1, d);
+}
+
+function diffDays(dateStr) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const target = parseDate(dateStr);
+  return Math.ceil((target - today) / 86400000);
+}
+
+function currentPhase() {
+  const today = new Date(); today.setHours(0,0,0,0);
+  for (const p of PHASES) {
+    const s = parseDate(p.start);
+    const e = parseDate(p.end);
+    if (today >= s && today <= e) return p;
+  }
+  // before or after all phases
+  if (today < parseDate(PHASES[0].start)) return PHASES[0];
+  return PHASES[PHASES.length - 1];
+}
+
+function streak(taskId) {
+  let count = 0;
+  const today = new Date(); today.setHours(0,0,0,0);
+  for (let i = 0; i < 365; i++) {
+    const d = new Date(today); d.setDate(d.getDate() - i);
+    const k = dateKey(d);
+    if (state[k] && state[k][taskId]) count++;
+    else break;
+  }
+  return count;
+}
+
+function last30DaysDone(taskId) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const result = [];
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(today); d.setDate(d.getDate() - i);
+    const k = dateKey(d);
+    result.push({ date: d, done: !!(state[k] && state[k][taskId]) });
+  }
+  return result;
+}
+
+// ============================================================
+// RENDER: TODAY
+// ============================================================
+function renderToday() {
+  const phase = currentPhase();
+  const tk = todayKey();
+  if (!state[tk]) state[tk] = {};
+
+  // Header
+  const now = new Date();
+  document.getElementById('headerDate').textContent =
+    now.toLocaleDateString('ja-JP', { month: 'long', day: 'numeric', weekday: 'short' });
+  document.getElementById('phaseLabel').textContent = `Phase ${phase.num}：${phase.title}`;
+  document.getElementById('todaySub').textContent = `Phase ${phase.num} · ${phase.start} 〜 ${phase.end}`;
+
+  const todayTasks = TASKS.filter(t => t.phases[phase.num]);
+  const container = document.getElementById('todayCards');
+  container.innerHTML = '';
+
+  todayTasks.forEach(task => {
+    const pInfo = task.phases[phase.num];
+    const done = !!state[tk][task.id];
+    const st = streak(task.id);
+
+    const card = document.createElement('div');
+    card.className = 'task-card' + (done ? ' completed' : '');
+    card.style.setProperty('--card-color', task.color);
+
+    const streakHtml = st > 0
+      ? `<div class="task-streak">🔥 ${st}日連続継続中</div>`
+      : '';
+
+    card.innerHTML = `
+      <div class="task-card-top">
+        <div style="flex:1">
+          <div class="task-name">${task.name}</div>
+          <div class="task-time">目安: ${pInfo.time}</div>
+          <div class="task-memo">${pInfo.memo}</div>
+          ${streakHtml}
+        </div>
+        <button class="check-btn ${done ? 'done' : ''}" onclick="toggleTask('${task.id}')" aria-label="完了にする">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        </button>
+      </div>
+    `;
+    container.appendChild(card);
+  });
+
+  const allDone = todayTasks.length > 0 && todayTasks.every(t => state[tk][t.id]);
+  document.getElementById('allDoneMsg').classList.toggle('show', allDone);
+}
+
+function toggleTask(taskId) {
+  const tk = todayKey();
+  if (!state[tk]) state[tk] = {};
+  state[tk][taskId] = !state[tk][taskId];
+  saveState(state);
+  renderToday();
+}
+
+// ============================================================
+// RENDER: PROGRESS
+// ============================================================
+function renderProgress() {
+  const container = document.getElementById('progressCards');
+  container.innerHTML = '';
+  const weekDays = ['日','月','火','水','木','金','土'];
+
+  TASKS.forEach(task => {
+    const days = last30DaysDone(task.id);
+    const st = streak(task.id);
+    const doneCount = days.filter(d => d.done).length;
+    const pct = Math.round(doneCount / 30 * 100);
+
+    // week label header (first row of the grid)
+    const firstDay = days[0].date.getDay();
+
+    const card = document.createElement('div');
+    card.className = 'progress-task';
+
+    let calHtml = '<div class="cal-week-labels">';
+    for (const wd of weekDays) calHtml += `<span>${wd}</span>`;
+    calHtml += '</div><div class="calendar-grid">';
+
+    // padding for first day of week
+    for (let i = 0; i < firstDay; i++) {
+      calHtml += `<div class="cal-day future"></div>`;
+    }
+
+    const todayStr = todayKey();
+    days.forEach(({ date, done }) => {
+      const isToday = dateKey(date) === todayStr;
+      const cls = ['cal-day', done ? 'done-day' : '', isToday ? 'today-mark' : ''].join(' ');
+      calHtml += `<div class="${cls}" title="${dateKey(date)}"></div>`;
+    });
+    calHtml += '</div>';
+
+    card.style.setProperty('--card-color', task.color);
+    card.innerHTML = `
+      <div class="prog-header">
+        <div class="prog-name">
+          <span class="dot" style="background:${task.color}"></span>${task.name}
+        </div>
+        <div class="prog-streak"><span>${st}</span>日連続</div>
+      </div>
+      ${calHtml}
+      <div class="prog-stats">
+        <div class="prog-stat">
+          <div class="prog-stat-val" style="color:${task.color}">${doneCount}</div>
+          <div class="prog-stat-lbl">30日中の完了日数</div>
+        </div>
+        <div class="prog-stat">
+          <div class="prog-stat-val" style="color:${task.color}">${pct}%</div>
+          <div class="prog-stat-lbl">達成率</div>
+        </div>
+        <div class="prog-stat">
+          <div class="prog-stat-val" style="color:${task.color}">${st}</div>
+          <div class="prog-stat-lbl">現在のstreak</div>
+        </div>
+      </div>
+    `;
+    container.appendChild(card);
+  });
+}
+
+// ============================================================
+// RENDER: DASHBOARD
+// ============================================================
+function renderDash() {
+  const phase = currentPhase();
+  const today = new Date(); today.setHours(0,0,0,0);
+  const totalStart = parseDate(PHASES[0].start);
+  const totalEnd = parseDate(PHASES[PHASES.length-1].end);
+  const totalDays = (totalEnd - totalStart) / 86400000;
+  const elapsed = Math.min(Math.max((today - totalStart) / 86400000, 0), totalDays);
+  const pct = (elapsed / totalDays * 100).toFixed(1);
+
+  document.getElementById('timelineFill').style.width = `${pct}%`;
+
+  // Phase markers
+  const phDiv = document.getElementById('timelinePhases');
+  phDiv.innerHTML = PHASES.map(p => {
+    const pStart = parseDate(p.start);
+    const isCurrent = p.num === phase.num;
+    const isDone = today > parseDate(p.end);
+    const cls = ['tl-phase', isCurrent ? 'current' : '', isDone ? 'done-phase' : ''].join(' ');
+    return `<div class="${cls}">
+      <div class="tl-phase-dot"></div>
+      ${p.label}
+    </div>`;
+  }).join('');
+
+  // Deadline cards
+  const dlContainer = document.getElementById('deadlineCards');
+  dlContainer.innerHTML = '';
+  TASKS.forEach(task => {
+    const days = diffDays(task.deadline);
+    if (days < 0) return;
+    const urgent = days <= 14;
+
+    // progress bar: phase start to deadline
+    const phaseStart = PHASES.find(p => {
+      for (let k = 1; k <= 4; k++) if (task.phases[k]) return p.num === k;
+    });
+    const startD = phaseStart ? parseDate(phaseStart.start) : totalStart;
+    const endD = parseDate(task.deadline);
+    const totalSpan = (endD - startD) / 86400000;
+    const daysElapsed = (today - startD) / 86400000;
+    const barPct = Math.min(Math.max(daysElapsed / totalSpan * 100, 0), 100).toFixed(1);
+
+    const card = document.createElement('div');
+    card.className = `dl-card${urgent ? ' urgent' : ''}`;
+    card.innerHTML = `
+      <div class="dl-days" style="color:${task.color}">
+        ${days}
+        <small>日後</small>
+      </div>
+      <div class="dl-info">
+        <div class="dl-name">${task.name}</div>
+        <div class="dl-date">${task.deadlineLabel}</div>
+        <div class="dl-bar-wrap">
+          <div class="dl-bar" style="width:${barPct}%;background:${task.color}"></div>
+        </div>
+      </div>
+    `;
+    dlContainer.appendChild(card);
+  });
+
+  // Phase detail
+  const phDetail = document.getElementById('phaseDetail');
+  phDetail.innerHTML = `
+    <div style="font-weight:700;font-size:14px;margin-bottom:10px;color:var(--accent)">
+      Phase ${phase.num}：${phase.title}
+      <span style="font-size:11px;color:var(--muted);font-weight:400;margin-left:8px">${phase.start} 〜 ${phase.end}</span>
+    </div>
+    ${TASKS.map(t => {
+      const info = t.phases[phase.num];
+      if (!info) return '';
+      return `<div class="phase-row">
+        <div class="phase-row-name">
+          <span class="dot" style="background:${t.color}"></span>${t.name}
+        </div>
+        <div class="phase-row-time">${info.time}</div>
+      </div>`;
+    }).join('')}
+  `;
+}
+
+// ============================================================
+// TAB SWITCHING
+// ============================================================
+function switchTab(name, btn) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('sec-' + name).classList.add('active');
+  btn.classList.add('active');
+  if (name === 'today') renderToday();
+  if (name === 'progress') renderProgress();
+  if (name === 'dash') renderDash();
+}
+
+// ============================================================
+// INIT
+// ============================================================
+renderToday();
+</script>
+</body>
+</html>
